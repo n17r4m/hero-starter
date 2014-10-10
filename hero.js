@@ -1,98 +1,96 @@
-/* 
 
-  The only function that is required in this file is the "move" function
+var emotes = {
+	blitzing: function(gameData, helpers) {
+		var enemyDirection = helpers.findNearestEnemy(gameData)
+		if (enemyDirection){
+			return enemyDirection;
+		} else {
+			return emotes.passive(gameData, helpers)
+		}
+	},
+	aggressive: function(gameData, helpers) {
+		var enemyDirection = helpers.findNearestWeakerEnemy(gameData)
+		if (enemyDirection){
+			return enemyDirection;
+		} else {
+			return emotes.passive(gameData, helpers)
+		}
+	},	
+	passive: function(gameData, helpers) {
+		var mineDirection = helpers.findNearestNonTeamDiamondMine(gameData)
+		if (mineDirection){
+			return mineDirection;
+		} else {
+			return emotes.drunk(gameData, helpers)
+		}
+	},
+	scared: function(gameData, helpers) {
+		return helpers.findNearestHealthWell(gameData)
+	},
+	helpful: function(gameData, helpers) {
+		var teammateDirection = helpers.findNearestTeamMember(gameData)
+		if(teammateDirection){
+			return teammateDirection;
+		} else {
+			return emotes.passive(gameData, helpers)
+		}
+	},
+	drunk: function(gameData, helpers){
+		var choices = ['North', 'South', 'East', 'West'];
+		return choices[Math.floor(Math.random()*4)];
+	}
+}
 
-  You MUST export the move function, in order for your code to run
-  So, at the bottom of this code, keep the line that says:
-
-  module.exports = move;
-
-  The "move" function must return "North", "South", "East", "West", or "Stay"
-  (Anything else will be interpreted by the game as "Stay")
-  
-  The "move" function should accept two arguments that the website will be passing in: 
-    - a "gameData" object which holds all information about the current state
-      of the battle
-
-    - a "helpers" object, which contains useful helper functions
-      - check out the helpers.js file to see what is available to you
-
-    (the details of these objects can be found on javascriptbattle.com/#rules)
-
-  This file contains four example heroes that you can use as is, adapt, or
-  take ideas from and implement your own version. Simply uncomment your desired
-  hero and see what happens in tomorrow's battle!
-
-  Such is the power of Javascript!!!
-
-*/
-
-//TL;DR: If you are new, just uncomment the 'move' function that you think sounds like fun!
-//       (and comment out all the other move functions)
 
 
-// // The "Northerner"
-// // This hero will walk North.  Always.
-// var move = function(gameData, helpers) {
-//   var myHero = gameData.activeHero;
-//   return 'North';
-// };
+function getEmoState(gameData, helpers){
+	var hero = gameData.activeHero;
+	
+	var healthWell = healthWellStats(gameData, helpers)
+	var teammate = teammateStats(gameData, helpers)	
+	var mine = mineStats(gameData, helpers)	
+	
+	
+	if (hero.health >= 60 && teammate.health <= 80 && teammate.distance <= 3) {
+		return emotes.helpful
+	}
 
-// // The "Blind Man"
-// // This hero will walk in a random direction each turn.
-// var move = function(gameData, helpers) {
-//   var myHero = gameData.activeHero;
-//   var choices = ['North', 'South', 'East', 'West'];
-//   return choices[Math.floor(Math.random()*4)];
-// };
+	if (hero.health <= 80 && healthWell.distance === 1) {
+		return emotes.scared
+	}
+	
+	/*
+	if (hero.health >= 90 && mine.distance <= 1) {
+		return emotes.passive
+	}
+	*/
+	
+	switch (true){
+		case hero.health <= 40: return emotes.scared;
+		case hero.health <= 60: return emotes.passive;
+		case hero.health <= 80: return emotes.helpful;
+		case hero.health <= 90: return emotes.aggressive;
+		default: return emotes.blitzing;
+	}
+}
 
-// // The "Priest"
-// // This hero will heal nearby friendly champions.
-// var move = function(gameData, helpers) {
-//   var myHero = gameData.activeHero;
-//   if (myHero.health < 60) {
-//     return helpers.findNearestHealthWell(gameData);
-//   } else {
-//     return helpers.findNearestTeamMember(gameData);
-//   }
-// };
 
-// // The "Unwise Assassin"
-// // This hero will attempt to kill the closest enemy hero. No matter what.
-// var move = function(gameData, helpers) {
-//   var myHero = gameData.activeHero;
-//   if (myHero.health < 30) {
-//     return helpers.findNearestHealthWell(gameData);
-//   } else {
-//     return helpers.findNearestEnemy(gameData);
-//   }
-// };
+var move = function(game, helpers) {
 
-// // The "Careful Assassin"
-// // This hero will attempt to kill the closest weaker enemy hero.
-// var move = function(gameData, helpers) {
-//   var myHero = gameData.activeHero;
-//   if (myHero.health < 50) {
-//     return helpers.findNearestHealthWell(gameData);
-//   } else {
-//     return helpers.findNearestWeakerEnemy(gameData);
-//   }
-// };
+	var emote = getEmoState(game, helpers);
+	return emote(game, helpers)
 
-// // The "Safe Diamond Miner"
-var move = function(gameData, helpers) {
-  var myHero = gameData.activeHero;
-
+	/*
   //Get stats on the nearest health well
   var healthWellStats = helpers.findNearestObjectDirectionAndDistance(gameData.board, myHero, function(boardTile) {
     if (boardTile.type === 'HealthWell') {
       return true;
     }
   });
+  
   var distanceToHealthWell = healthWellStats.distance;
   var directionToHealthWell = healthWellStats.direction;
-  
-
+	
   if (myHero.health < 40) {
     //Heal no matter what if low health
     return directionToHealthWell;
@@ -103,41 +101,59 @@ var move = function(gameData, helpers) {
     //If healthy, go capture a diamond mine!
     return helpers.findNearestNonTeamDiamondMine(gameData);
   }
+  */
 };
 
-// // The "Selfish Diamond Miner"
-// // This hero will attempt to capture diamond mines (even those owned by teammates).
-// var move = function(gameData, helpers) {
-//   var myHero = gameData.activeHero;
-
-//   //Get stats on the nearest health well
-//   var healthWellStats = helpers.findNearestObjectDirectionAndDistance(gameData.board, myHero, function(boardTile) {
-//     if (boardTile.type === 'HealthWell') {
-//       return true;
-//     }
-//   });
-
-//   var distanceToHealthWell = healthWellStats.distance;
-//   var directionToHealthWell = healthWellStats.direction;
-
-//   if (myHero.health < 40) {
-//     //Heal no matter what if low health
-//     return directionToHealthWell;
-//   } else if (myHero.health < 100 && distanceToHealthWell === 1) {
-//     //Heal if you aren't full health and are close to a health well already
-//     return directionToHealthWell;
-//   } else {
-//     //If healthy, go capture a diamond mine!
-//     return helpers.findNearestUnownedDiamondMine(gameData);
-//   }
-// };
-
-// // The "Coward"
-// // This hero will try really hard not to die.
-// var move = function(gameData, helpers) {
-//   return helpers.findNearestHealthWell(gameData);
-// }
 
 
-// Export the move function here
+function healthWellStats(game, helpers){
+	var hero = game.activeHero
+	var healthWellStats = helpers.findNearestObjectDirectionAndDistance(
+		game.board, hero, function(tile) {
+    if (tile.type === 'HealthWell') {
+      return true;
+    }
+  });
+  return {
+  	distance: healthWellStats.distance,
+  	direction: healthWellStats.direction
+  }
+}
+
+function teammateStats(game, helpers){
+	var hero = game.activeHero
+	var teammateStats = helpers.findNearestObjectDirectionAndDistance(
+		game.board, hero, function(tile) {
+    if (tile.type === 'Hero' && tile.team === hero.team) {
+      return true;
+    }
+  });
+  return {
+  	health: teammateStats.health,
+  	distance: teammateStats.distance,
+  	direction: teammateStats.direction
+  }
+}
+
+function mineStats(game, helpers){
+	var hero = game.activeHero
+	var mineStats = helpers.findNearestObjectDirectionAndDistance(
+		game.board, hero, function(tile) {
+		if (tile.type === 'DiamondMine') {
+      if (tile.owner) {
+        return tile.owner.id !== hero.id;
+      } else {
+        return true;
+      }
+    } else {
+      return false;
+    }
+  });
+  return {
+  	distance: mineStats.distance,
+  	direction: mineStats.direction
+  }
+}
+
+
 module.exports = move;
