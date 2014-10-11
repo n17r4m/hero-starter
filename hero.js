@@ -60,7 +60,7 @@ function examine(hero, features){
 		var distance = feature.distance;
 		switch(tile.type){
 			case 'HealthWell':
-				base = (100 - health) * 2
+				base = (100 - health) * 3
 				break;		
 			case 'DiamondMine':
 				if(!tile.owner || tile.owner.team !== hero.team){
