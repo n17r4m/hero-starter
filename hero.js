@@ -24,6 +24,10 @@ function look2(direction, board, location, distance){
 	distance = distance || 1;
 	var x = location.x + compass[direction].x;
 	var y = location.y + compass[direction].y;
+	if(y < 0 || y >= board.tiles.length || x < 0 || x >= board.tiles[0].length){
+		// OOB
+		return [];
+	}
 	var tile = board.tiles[y][x]
 	if(tile.type != "Unoccupied"){
 		return [{tile: tile, distance: distance}]
@@ -88,7 +92,7 @@ function examine(hero, features){
 	return desire / (features.length/3);
 }
 
-module.exports = function(game, helpers){
+var move = function(game, helpers){
 	var hero = game.activeHero;
 	choices = [];
 	for (var direction in compass){
@@ -102,3 +106,7 @@ module.exports = function(game, helpers){
 	
 	return choices[0].direction
 }
+
+module.exports = move;
+
+
