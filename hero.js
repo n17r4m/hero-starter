@@ -32,17 +32,19 @@ function look2(direction, board, location, distance){
 	if(tile.type != "Unoccupied"){
 		return [{tile: tile, distance: distance}]
 	} else {
+		var features = [];
 		if (tile.subType == "Bones"){
-			return [{tile: tile, distance: distance}]
+			features.push({tile: tile, distance: distance})
 		}
 		var xa = x + compass[compass[direction].sides[0]].x;
 		var ya = y + compass[compass[direction].sides[0]].y;
 		var xb = x + compass[compass[direction].sides[1]].x;
 		var yb = y + compass[compass[direction].sides[1]].y;
-		return []
+		return features
 			.concat(look(direction, board, {x:x, y:y}, distance + 1))
-			.concat(look(direction, board, {x:xa, y:ya}, distance + 2))
-			.concat(look(direction, board, {x:xb, y:yb}, distance + 2))
+			.concat(look(direction, board, {x:xa, y:ya}, distance + 1))
+			.concat(look(direction, board, {x:xb, y:yb}, distance + 1))
+		
 	}
 }
 
@@ -54,53 +56,75 @@ function examine(hero, features){
 	var desire = 0;
 	var health = hero.health;
 	var mines = hero.mineCount + 1;
+	var enemies = 0;
+	var teammates = 0;
 	features.forEach(function(feature){
 		var base = 0;
 		var tile = feature.tile;
 		var distance = feature.distance;
 		switch(tile.type){
 			case 'HealthWell':
-				base = (100 - health) * 3
+				base = (100 - health)
 				break;		
 			case 'DiamondMine':
 				if(!tile.owner || tile.owner.team !== hero.team){
-					if(health > 60){
-						base = 50 / mines
+					if(health > 50){
+						base = 10
 					}
 				}
 				break;
 			case 'Hero':
 				if(tile.team == hero.team){ 
 					// Teammate
-					if(health > 40 && tile.health < 100){
+					teammates ++;
+					if(health > 50 && tile.health < 100){
 						base = tile.health / health * 100
-					}
+					} 
 				} else { 
 					// Enemy
-					if(health > 40){
-						base = health / tile.health * 150
+					enemies ++;
+					if(health > 50){
+						base = health / tile.health * 100
 					}
 				}
 				break;
 			case 'Unoccupied':
 				if(tile.subType == 'Bone'){
-					base = 20
+					base = 5
 				}
+				break;
 		}
 		desire += base/distance;
 	})
-	return desire / (features.length/3);
+	
+	return (desire);
 }
+
+function shuffle(o){
+    for(var j, x, i = o.length; i; 
+    	j = Math.floor(Math.random() * i), 
+    	x = o[--i], 
+    	o[i] = o[j], 
+    	o[j] = x
+    );
+    return o;
+};
 
 var move = function(game, helpers){
 	var hero = game.activeHero;
+	
+	if(hero.health <= 40){
+		return helpers.findNearestHealthWell(game)
+	}
+	
 	choices = [];
 	for (var direction in compass){
 		choices.push({direction: direction, desire: examine(hero,
 			look(direction, game.board, {x: hero.distanceFromLeft, y: hero.distanceFromTop})
 		)})
 	}
-	choices.sort(function(choice1, choice2){ 
+	
+	shuffle(choices).sort(function(choice1, choice2){ 
 		return choice2.desire - choice1.desire
 	})
 	
