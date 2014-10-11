@@ -1,136 +1,159 @@
 
-
-var horiz = ["East", "West"]
-var vert = ["North", "South"]
-var compass = {
-	North: {x:0, y:-1, sides: horiz}, 
-	East: {x:1, y:0, sides: vert}, 
-	South: {x:0, y:1, sides: horiz}, 
-	West: {x:-1, y:0, sides: vert}
-}
-
-
-function dedupe(features){
-	var visitedTiles = []
-	return features.filter(function(spot){
-		if(visitedTiles.indexOf(spot.tile) == -1){
-			visitedTiles.push(spot.tile)
-			return true
-		} else { return false }
-	})
-}
-
-function look2(direction, board, location, distance){
-	distance = distance || 1;
-	var x = location.x + compass[direction].x;
-	var y = location.y + compass[direction].y;
-	if(y < 0 || y >= board.tiles.length || x < 0 || x >= board.tiles[0].length){
-		// OOB
-		return [];
-	}
-	var tile = board.tiles[y][x]
-	if(tile.type != "Unoccupied"){
-		return [{tile: tile, distance: distance}]
-	} else {
-		var features = [];
-		if (tile.subType == "Bones"){
-			features.push({tile: tile, distance: distance})
+var emotes = {
+	blitzing: function(gameData, helpers) {
+		var enemyDirection = helpers.findNearestEnemy(gameData)
+		if (enemyDirection){
+			return enemyDirection;
+		} else {
+			return emotes.passive(gameData, helpers)
 		}
-		var xa = x + compass[compass[direction].sides[0]].x;
-		var ya = y + compass[compass[direction].sides[0]].y;
-		var xb = x + compass[compass[direction].sides[1]].x;
-		var yb = y + compass[compass[direction].sides[1]].y;
-		return features
-			.concat(look(direction, board, {x:x, y:y}, distance + 1))
-			.concat(look(direction, board, {x:xa, y:ya}, distance + 1))
-			.concat(look(direction, board, {x:xb, y:yb}, distance + 1))
-		
+	},
+	aggressive: function(gameData, helpers) {
+		var enemyDirection = helpers.findNearestWeakerEnemy(gameData)
+		if (enemyDirection){
+			return enemyDirection;
+		} else {
+			return emotes.passive(gameData, helpers)
+		}
+	},	
+	passive: function(gameData, helpers) {
+		var mineDirection = helpers.findNearestNonTeamDiamondMine(gameData)
+		if (mineDirection){
+			return mineDirection;
+		} else {
+			return emotes.drunk(gameData, helpers)
+		}
+	},
+	scared: function(gameData, helpers) {
+		return helpers.findNearestHealthWell(gameData)
+	},
+	helpful: function(gameData, helpers) {
+		var teammateDirection = helpers.findNearestTeamMember(gameData)
+		if(teammateDirection){
+			return teammateDirection;
+		} else {
+			return emotes.passive(gameData, helpers)
+		}
+	},
+	drunk: function(gameData, helpers){
+		var choices = ['North', 'South', 'East', 'West'];
+		return choices[Math.floor(Math.random()*4)];
 	}
 }
 
-function look(){
-	return dedupe(look2.apply(null, arguments))
-}
 
-function examine(hero, features){
-	var desire = 0;
-	var health = hero.health;
-	var mines = hero.mineCount + 1;
-	var enemies = 0;
-	var teammates = 0;
-	features.forEach(function(feature){
-		var base = 0;
-		var tile = feature.tile;
-		var distance = feature.distance;
-		switch(tile.type){
-			case 'HealthWell':
-				base = (100 - health)
-				break;		
-			case 'DiamondMine':
-				if(!tile.owner || tile.owner.team !== hero.team){
-					if(health > 50){
-						base = 10
-					}
-				}
-				break;
-			case 'Hero':
-				if(tile.team == hero.team){ 
-					// Teammate
-					teammates ++;
-					if(health > 50 && tile.health < 100){
-						base = tile.health / health * 100
-					} 
-				} else { 
-					// Enemy
-					enemies ++;
-					if(health > 50){
-						base = health / tile.health * 100
-					}
-				}
-				break;
-			case 'Unoccupied':
-				if(tile.subType == 'Bone'){
-					base = 5
-				}
-				break;
-		}
-		desire += base/distance;
-	})
+
+function getEmoState(gameData, helpers){
+	var hero = gameData.activeHero;
 	
-	return (desire);
+	var healthWell = healthWellStats(gameData, helpers)
+	var teammate = teammateStats(gameData, helpers)	
+	var mine = mineStats(gameData, helpers)	
+	
+	
+	if (hero.health >= 60 && teammate.health <= 80 && teammate.distance <= 3) {
+		return emotes.helpful
+	}
+
+	if (hero.health <= 80 && healthWell.distance === 1) {
+		return emotes.scared
+	}
+	
+	/*
+	if (hero.health >= 90 && mine.distance <= 1) {
+		return emotes.passive
+	}
+	*/
+	
+	switch (true){
+		case hero.health <= 40: return emotes.scared;
+		case hero.health <= 60: return emotes.passive;
+		case hero.health <= 80: return emotes.helpful;
+		case hero.health <= 90: return emotes.aggressive;
+		default: return emotes.blitzing;
+	}
 }
 
-function shuffle(o){
-    for(var j, x, i = o.length; i; 
-    	j = Math.floor(Math.random() * i), 
-    	x = o[--i], 
-    	o[i] = o[j], 
-    	o[j] = x
-    );
-    return o;
+
+var move = function(game, helpers) {
+
+	var emote = getEmoState(game, helpers);
+	return emote(game, helpers)
+
+	/*
+  //Get stats on the nearest health well
+  var healthWellStats = helpers.findNearestObjectDirectionAndDistance(gameData.board, myHero, function(boardTile) {
+    if (boardTile.type === 'HealthWell') {
+      return true;
+    }
+  });
+  
+  var distanceToHealthWell = healthWellStats.distance;
+  var directionToHealthWell = healthWellStats.direction;
+	
+  if (myHero.health < 40) {
+    //Heal no matter what if low health
+    return directionToHealthWell;
+  } else if (myHero.health < 100 && distanceToHealthWell === 1) {
+    //Heal if you aren't full health and are close to a health well already
+    return directionToHealthWell;
+  } else {
+    //If healthy, go capture a diamond mine!
+    return helpers.findNearestNonTeamDiamondMine(gameData);
+  }
+  */
 };
 
-var move = function(game, helpers){
-	var hero = game.activeHero;
-	
-	if(hero.health <= 40){
-		return helpers.findNearestHealthWell(game)
-	}
-	
-	choices = [];
-	for (var direction in compass){
-		choices.push({direction: direction, desire: examine(hero,
-			look(direction, game.board, {x: hero.distanceFromLeft, y: hero.distanceFromTop})
-		)})
-	}
-	
-	shuffle(choices).sort(function(choice1, choice2){ 
-		return choice2.desire - choice1.desire
-	})
-	
-	return choices[0].direction
+
+
+function healthWellStats(game, helpers){
+	var hero = game.activeHero
+	var healthWellStats = helpers.findNearestObjectDirectionAndDistance(
+		game.board, hero, function(tile) {
+    if (tile.type === 'HealthWell') {
+      return true;
+    }
+  });
+  return {
+  	distance: healthWellStats.distance,
+  	direction: healthWellStats.direction
+  }
 }
 
+function teammateStats(game, helpers){
+	var hero = game.activeHero
+	var teammateStats = helpers.findNearestObjectDirectionAndDistance(
+		game.board, hero, function(tile) {
+    if (tile.type === 'Hero' && tile.team === hero.team) {
+      return true;
+    }
+  });
+  return {
+  	health: teammateStats.health,
+  	distance: teammateStats.distance,
+  	direction: teammateStats.direction
+  }
+}
+
+function mineStats(game, helpers){
+	var hero = game.activeHero
+	var mineStats = helpers.findNearestObjectDirectionAndDistance(
+		game.board, hero, function(tile) {
+		if (tile.type === 'DiamondMine') {
+      if (tile.owner) {
+        return tile.owner.id !== hero.id;
+      } else {
+        return true;
+      }
+    } else {
+      return false;
+    }
+  });
+  return {
+  	distance: mineStats.distance,
+  	direction: mineStats.direction
+  }
+}
+
+
 module.exports = move;
-
-
