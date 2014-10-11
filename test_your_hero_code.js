@@ -23,7 +23,7 @@ var helpers = require('./helpers.js');
 var Game = require('./game_logic/Game.js');
 
 //Get my hero's move function ("brain")
-var heroMoveFunction = require('./hero.js');
+var heroMoveFunction = require('./hero_new.js');
 
 
 var bots = [
