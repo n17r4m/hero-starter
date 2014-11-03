@@ -55,53 +55,26 @@ function getEmoState(gameData, helpers){
 		return emotes.helpful
 	}
 
-	if (hero.health <= 80 && healthWell.distance === 1) {
+	if (hero.health <= 80 && healthWell.distance <= 1) {
 		return emotes.scared
 	}
 	
-	/*
-	if (hero.health >= 90 && mine.distance <= 1) {
+	if (hero.health >= 80 && mine.distance <= 1) {
 		return emotes.passive
 	}
-	*/
 	
 	switch (true){
-		case hero.health <= 40: return emotes.scared;
-		case hero.health <= 60: return emotes.passive;
-		case hero.health <= 80: return emotes.helpful;
-		case hero.health <= 90: return emotes.aggressive;
+		case hero.health <= 60: return emotes.scared;
+		// case hero.health <= 60: return emotes.passive;
+		// case hero.health <= 80: return emotes.helpful;
+		case hero.health <= 80: return emotes.aggressive;
 		default: return emotes.blitzing;
 	}
 }
 
 
 var move = function(game, helpers) {
-
-	var emote = getEmoState(game, helpers);
-	return emote(game, helpers)
-
-	/*
-  //Get stats on the nearest health well
-  var healthWellStats = helpers.findNearestObjectDirectionAndDistance(gameData.board, myHero, function(boardTile) {
-    if (boardTile.type === 'HealthWell') {
-      return true;
-    }
-  });
-  
-  var distanceToHealthWell = healthWellStats.distance;
-  var directionToHealthWell = healthWellStats.direction;
-	
-  if (myHero.health < 40) {
-    //Heal no matter what if low health
-    return directionToHealthWell;
-  } else if (myHero.health < 100 && distanceToHealthWell === 1) {
-    //Heal if you aren't full health and are close to a health well already
-    return directionToHealthWell;
-  } else {
-    //If healthy, go capture a diamond mine!
-    return helpers.findNearestNonTeamDiamondMine(gameData);
-  }
-  */
+	return getEmoState(game, helpers)(game, helpers)
 };
 
 
